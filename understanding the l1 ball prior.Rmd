@@ -1,0 +1,22 @@
+---
+title: "Understanding the l1-ball prior"
+author: "Corey Yanofsky"
+date: "6/12/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## l1 projection
+
+When I first started reading the paper I wasn't even sure what kind of projection was involved in projecting onto an l1-ball of radius r. It turns out that it's projection in the l1 sense; that is, to project a point toward the origin by an increment of d one maps the co-ordinates through
+
+x_i ↦ sgn(x)*max(abs(x_i) - d, 0)
+
+The hard part is figuring out which increment d achieves the target r, but it's not actually that hard, since it can be reframed as finding the root of an extremely well-behaved function (monotonic, continuous, piecewise linear). 
+
+## Dual view of l1 projection
+
+The paper presents its approach as projecting some seed prior onto some l1-ball of generic radius r (a sparsifying operation) and then assigning a prior to r, thereby generating a joint prior that has full support and also assigns non-zero probability mass to sparse parameter values. However (as the paper itself notes in section)
