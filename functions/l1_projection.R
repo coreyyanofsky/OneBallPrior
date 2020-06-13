@@ -27,6 +27,6 @@ smooth_ramp <- function(x) {
   )))
 }
 
-smooth_threshold_fun <- function(x, threshold) {
-  smooth_ramp(x - threshold) - smooth_ramp(-threshold - x)
+smooth_threshold_fun <- function(x, d) {
+  smooth_ramp(x - d) - smooth_ramp(-d - x)
 }

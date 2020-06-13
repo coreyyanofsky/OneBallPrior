@@ -9,14 +9,44 @@ output: html_document
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-## l1 projection
+## Projection of a point onto an $\ell_1$ ball of radius $r$
 
-When I first started reading the paper I wasn't even sure what kind of projection was involved in projecting onto an l1-ball of radius r. It turns out that it's projection in the l1 sense; that is, to project a point toward the origin by an increment of d one maps the co-ordinates through
+An $\ell_1$ ball of radius $r$ in $\mathbb{R}^N$ is the set of points satisfying $\sum_N \left|x_i\right| = r$. Imagine projecting some point onto a slightly smaller $\ell_1$ ball, big enough any $x_i$ that is not already zero will not become so. The point that is closest to $\mathrm{x}$ on the ball can be reached by reducing the magnitude of each non-zero co-ordinate by a small value -- the same small value in each co-ordinate. In two dimensions it would look like this: 
 
-x_i ↦ sgn(x)*max(abs(x_i) - d, 0)
+```{r plot of l1 ball}
+par(mar = c(4,2,1,1) + 0.1, pty = "s")
+plot(c(-4.5,4.5), c(-4.5,4.5), type = "n", xaxt = "n", yaxt = "n", xlab = expression(x[1]), ylab = expression(x[2]))
+abline(h = 0, lty = 2)
+abline(v = 0, lty = 2)
+lines(c(-3,0,3,0,-3),c(0,3,0,-3,0), lwd = 2)
+lines(c(-3.6,0,3.6,0,-3.6),c(0,3.6,0,-3.6,0), lty = 3)
+points(c(-1,-1.3),c(2,2.3),pch=c(16,1))
+# text()
+```
 
-The hard part is figuring out which increment d achieves the target r, but it's not actually that hard, since it can be reframed as finding the root of an extremely well-behaved function (monotonic, continuous, piecewise linear). 
+
+For general $r$ we relax the restriction that non-zero values won't become zero; once a co-ordinate reaches zero it has no where to go and that's fine. So projection onto an $\ell_1$ ball from its exterior is can be achieved by passing each co-ordinate through the reduce-magnitude-by-at-most-$\delta$ map:
+
+$$x_i ↦ sgn(x_i)\cdot \left(\left|x_i\right| - \delta\right)_+$$
+
+```{r plot of thresholding}
+par(mar = c(5,5,1,1) + 0.1, pty = "s")
+plot(c(-5,5), c(-5,5), type = "n", xaxt = "n", yaxt = "n", xlab = expression(x[i]), ylab = expression(sgn(x[i])%.%bgroup("(",list(abs(x[i])-italic(delta)),")")["+"]))
+abline(h = 0, lty = 2)
+abline(v = 0, lty = 2)
+lines(c(-7.5, -2.5), c(-5, 0), lwd = 2)
+lines(c(2.5, 7.5), c(0, 5), lwd = 2)
+lines(c(-2.5, 2.5), c(0, 0), lwd = 2)
+text(x = -2.5, y = 0, labels = expression(-italic(delta)), pos = 3)
+text(x = 2.5, y = 0, labels = expression(italic(delta)), pos = 3)
+```
+
+The hard part is figuring out which increment $\delta$ achieves the target value of $r$, but it's not actually that hard since it can be reframed as finding the root of the extremely well-behaved function $f_r(\delta) = \left[\sum_N\left(\left|x_i\right| - \delta\right)_+\right]-r$, which is monotonic, continuous, and piecewise linear. Various algorithms exist for solving this problem in finite time (as opposed to iterative algorithms with stopping criteria based on a tolerance); they can be viewed as instantiations of various root-finding algorithms (bisection, secant, Newton, etc.).
 
 ## Dual view of l1 projection
 
-The paper presents its approach as projecting some seed prior onto some l1-ball of generic radius r (a sparsifying operation) and then assigning a prior to r, thereby generating a joint prior that has full support and also assigns non-zero probability mass to sparse parameter values. However (as the paper itself notes in section)
+The paper presents its approach as projecting some seed prior onto some $\ell_1$-ball of generic radius $r$, thereby sparsifying it, and then assigning a prior to $r$, thereby generating a joint prior that has full support and also assigns non-zero probability mass to sparse parameter values. (Just to be clear, this projection only applies to regions exterior to the ball; the interior stays put.) However, as the paper notes in section 2.3, a distribution on $r$ induces a distribution on $\delta$ and vice versa, and a prior on $\delta$ is a lot easier to understand than a prior on $r$. Imagine sampling a (scalar) parameter value $\theta$ from a seed prior and then passing it through the magnitude reduction map above. All values with a magnitude less than $\delta$ map to 0, generating a spike of probability mass equal to the seed mass in the region $[-\delta, \delta]$; all values with a magnitude greater than $d$ have their magnitude reduced by that amount. If we then assign a prior distribution to $\delta$, the spike at zero has probability mass equal to the probability that $\delta$ is greater than the magnitude of $\theta$, which is a quantity we can tune. So in effect this projection creates a spike-and-slab prior where the mass in the spike is coupled with a truncation+shift of the density of the slab. Furthermore, an independent prior on $r$ induces a prior on $\delta$ with a complicated dependence on the parameters and vice versa. So in my view the dual view of projection as a magnitude reduction operation on a seed prior is a lot easier to conceptualize. 
+
+## Marginal likelihood of $\delta$ in a simple sparse estimation problem
+
+## Smooth magnitude reduction function: how the sausage is made
