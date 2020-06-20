@@ -9,25 +9,25 @@ output: html_document
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-## Projection of a point onto an $\ell_1$ ball of radius $r$
+### Projection of a point onto an $\ell_1$ ball of radius $r$
 
-An $\ell_1$ ball of radius $r$ in $\mathbb{R}^N$ is the set of points satisfying $\sum_N \left|x_i\right| = r$. Imagine projecting some point onto a slightly smaller $\ell_1$ ball, big enough any $x_i$ that is not already zero will not become so. The point that is closest to $\mathrm{x}$ on the ball can be reached by reducing the magnitude of each non-zero co-ordinate by a small value -- the same small value in each co-ordinate. In two dimensions it would look like this: 
+An $\ell_1$ ball of radius $r$ in $\mathbb{R}^N$ is the set of points satisfying $\sum_N \left|x_i\right| = r$. Imagine projecting some point onto a slightly smaller $\ell_1$ ball, big enough any $x_i$ that is not already zero will not become so. The point that is closest to $\mathbf{x}$ on the ball can be reached by reducing the magnitude of each non-zero co-ordinate by a small value -- the same small value in each co-ordinate. In two dimensions it would look like this: 
 
 ```{r plot of l1 ball}
 par(mar = c(4,2,1,1) + 0.1, pty = "s")
-plot(c(-4.5,4.5), c(-4.5,4.5), type = "n", xaxt = "n", yaxt = "n", xlab = expression(x[1]), ylab = expression(x[2]))
+plot(c(-4.5,4.5), c(-4.5,4.5), type = "n", xaxt = "n", yaxt = "n", xlab = expression(italic(x)[1]), ylab = expression(italic(x)[2]))
 abline(h = 0, lty = 2)
 abline(v = 0, lty = 2)
 lines(c(-3,0,3,0,-3),c(0,3,0,-3,0), lwd = 2)
 lines(c(-3.6,0,3.6,0,-3.6),c(0,3.6,0,-3.6,0), lty = 3)
 points(c(-1,-1.3),c(2,2.3),pch=c(16,1))
-# text()
 ```
 
 
-For general $r$ we relax the restriction that non-zero values won't become zero; once a co-ordinate reaches zero it has no where to go and that's fine. So projection onto an $\ell_1$ ball from its exterior is can be achieved by passing each co-ordinate through the reduce-magnitude-by-at-most-$\delta$ map:
+And it's easy to see what happens when we relax the restriction that non-zero values won't become zero; once a co-ordinate reaches zero it has no where to go and just stays there. So a projection onto an $\ell_1$ ball from its exterior is can be achieved by passing each co-ordinate through the reduce-magnitude-by-at-most-$\delta$ map:
 
-$$x_i ↦ sgn(x_i)\cdot \left(\left|x_i\right| - \delta\right)_+$$
+$$x_i ↦ \mathrm{sgn}(x_i)\cdot \left(\left|x_i\right| - \delta\right)_+$$
+in which $(\cdot)_+$ is the [ramp function](https://en.wikipedia.org/wiki/Ramp_function).
 
 ```{r plot of thresholding}
 par(mar = c(5,5,1,1) + 0.1, pty = "s")
@@ -41,12 +41,50 @@ text(x = -2.5, y = 0, labels = expression(-italic(delta)), pos = 3)
 text(x = 2.5, y = 0, labels = expression(italic(delta)), pos = 3)
 ```
 
-The hard part is figuring out which increment $\delta$ achieves the target value of $r$, but it's not actually that hard since it can be reframed as finding the root of the extremely well-behaved function $f_r(\delta) = \left[\sum_N\left(\left|x_i\right| - \delta\right)_+\right]-r$, which is monotonic, continuous, and piecewise linear. Various algorithms exist for solving this problem in finite time (as opposed to iterative algorithms with stopping criteria based on a tolerance); they can be viewed as instantiations of various root-finding algorithms (bisection, secant, Newton, etc.).
+The hard part is figuring out which decrement $\delta$ achieves the target value of $r$, but it's not actually that hard since it can be reframed as finding the root of the extremely well-behaved function $f_r(\delta) = \left[\sum_N\left(\left|x_i\right| - \delta\right)_+\right]-r$, which is convex, monotonic, continuous, and piecewise linear. Various algorithms exist for solving this problem in finite time (i.e., not iterative with a stopping criterion based on a tolerance); they can be viewed as instantiations of various root-finding algorithms (bisection, secant, Newton, etc.).
 
-## Dual view of l1 projection
+### Dual view of $\ell_1$ projection
 
-The paper presents its approach as projecting some seed prior onto some $\ell_1$-ball of generic radius $r$, thereby sparsifying it, and then assigning a prior to $r$, thereby generating a joint prior that has full support and also assigns non-zero probability mass to sparse parameter values. (Just to be clear, this projection only applies to regions exterior to the ball; the interior stays put.) However, as the paper notes in section 2.3, a distribution on $r$ induces a distribution on $\delta$ and vice versa, and a prior on $\delta$ is a lot easier to understand than a prior on $r$. Imagine sampling a (scalar) parameter value $\theta$ from a seed prior and then passing it through the magnitude reduction map above. All values with a magnitude less than $\delta$ map to 0, generating a spike of probability mass equal to the seed mass in the region $[-\delta, \delta]$; all values with a magnitude greater than $d$ have their magnitude reduced by that amount. If we then assign a prior distribution to $\delta$, the spike at zero has probability mass equal to the probability that $\delta$ is greater than the magnitude of $\theta$, which is a quantity we can tune. So in effect this projection creates a spike-and-slab prior where the mass in the spike is coupled with a truncation+shift of the density of the slab. Furthermore, an independent prior on $r$ induces a prior on $\delta$ with a complicated dependence on the parameters and vice versa. So in my view the dual view of projection as a magnitude reduction operation on a seed prior is a lot easier to conceptualize. 
+The paper presents its approach as projecting some seed prior onto some $\ell_1$-ball of generic radius $r$, thereby sparsifying it, and then assigning a prior to $r$, thereby generating a joint prior that has full support and also assigns non-zero probability mass to sparse parameter values. (Just to be clear, the projection only applies to regions exterior to the ball; the interior stays put.) However, as the paper notes in section 2.3, a distribution on $r$ induces a distribution on $\delta$ and vice versa, and a prior on $\delta$ is a lot easier to understand than a prior on $r$. Imagine sampling a (scalar) parameter value $\theta$ from a seed prior and then passing it through the magnitude reduction map above. All values with a magnitude less than $\delta$ map to 0, generating a spike of probability mass equal to the seed mass in the region $[-\delta, \delta]$; all values with a magnitude greater than $d$ have their magnitude reduced by that amount. If we then assign a prior distribution to $\delta$, the spike at zero has probability mass equal to the probability that $\delta$ is greater than the magnitude of $\theta$, which is a quantity we can tune to accord with our prior information. So in effect this projection creates a prior that is a mixture of spike-and-slab distributions where the mass in the spike is coupled with a truncation+shift of the density of the slab. Furthermore, an independent prior on $r$ induces a prior on $\delta$ with a complicated dependence on the seed parameters and vice versa. The dual view of the prior as a mixture of magnitude reduction operations on a seed prior is a lot easier to conceptualize and reason about than the original view of the prior as a mixture of $\ell_1$ projections of a seed prior.
 
-## Marginal likelihood of $\delta$ in a simple sparse estimation problem
+(Incidentally, this same sort of dual view is how the classical lasso is developed: a constrained optimization with a "generic" constraint is transformed into an unconstrained optimization of an objective function that has a Lagrange multiplier in it; the Lagrange multiplier then takes center stage, being estimated via cross-validation or assigned a prior or what have you, and the constrained optimization view fades into the background. In the current setting if one deploys the standard mathematical machinery for constrained optimization $\delta$ will pop out as the Lagrange multiplier.)
 
-## Smooth magnitude reduction function: how the sausage is made
+
+### Marginal likelihood of $\delta$ in a simple sparse estimation problem
+
+Consider the sparse estimation problem:
+
+$$\begin{eqnarray} y_{i}&=&\mu_{i}+\varepsilon_{i}\\\varepsilon_{i}&\sim& N(0,1)\\\mu_{i}&=&\mathrm{sgn}(\theta_{i})\cdot\left(\left|\theta_{i}\right|-\delta\right)_{+} \end{eqnarray}$$
+
+My way of thinking about this is to imagine an MCMC chain exploring parameter space in terms of $(\theta, \delta)$; this is because I originally intended to implement the model in Stan which won't tolerate a prior on $mu$ with a spike in it (but alas this didn't work ^[I coded up a smoothed version of the magnitude reduction map and defined $\mu_i$ as a transformed parameter to sneak the spike into the prior. Unfortunately Stan is too high octane for this trick to work; even though the smoothed version of the magnitude reduction map had continuous second derivatives the resulting posterior had flat regions that engendered a lot of diverging HMC trajectories.]).
+
+Let's ignore the seed prior on $\theta$ and the prior on $\delta$ for now and just think about the shape of the induced likelihood. 
+$$\begin{eqnarray}\log{p(y_i|\theta_i,\delta)}&=&-\frac{1}{2}\left(y_i-\mu_i\right)^2 + \mathrm{a~constant.}\\&=&-\frac{1}{2}\left[y_i-\mathrm{sgn}(\theta_i)\cdot \left(\left|\theta_i\right| - \delta\right)_+\right]^2 + \mathrm{a~constant.}\end{eqnarray}$$
+Obviously $\theta$ and $\delta$ are underdetermined, as we have learned only about their difference. Also, for all $\delta \ge\left|\theta_i\right|$, $\mu_i$ is fixed at zero and the likelihood is constant. If we endow $\theta$ and $\delta$ with uniform priors over a range large enough that the edges are far away from any of the $y_i$ values, what we'd expect to see during an MCMC run is:
+
+- for $y_i$ far from zero, the corresponding $\mu_i$ has a normal posterior, which implies that $\theta_i$ must track $\delta$ and stay roughly $y_i$ units above it in absolute value;
+- for $y_i$ close to zero, $\theta_i$'s magnitude can never become much larger than $\delta$'s; $\theta$ may drift below $\delta$ in absolute value and become uncoupled from it;
+- $\delta$ will drift around according to its uniform prior; nothing in the likelihood changes the shape of that prior except at the boundaries, which acquire a Gaussian shape and move inward from their prior limits by roughly the magnitude of whichever of the $y_i$ is largest in absolute value (because that's where $\theta_i$ runs into the edge of its own uniform prior)
+
+
+```{r, magnitude reduction  uniform priors}
+loglike_gen <- function(y) {
+  function(theta, delta) {
+    stopifnot(length(y) == length(theta)) 
+    -.5*sum((y - sign(y)*pmax(abs(theta) - delta, 0))^2)
+    
+  }
+}
+
+loglike <- loglike_gen(c(7,4))
+
+
+
+```
+
+Now let's consider what happens to $\delta$ if $\theta$ is endowed with a non-uniform seed prior, say, independent double-exponentials with rate $\lambda$. This particular choice is easy to reason about for two reasons: 
+
+- the magnitude reduction operation leaves its form unchanged so the induced prior on $\mu_i$ conditional on $\mu_i \ne 0$ is also double-exponential (with the same $\lambda$ too)
+- for $y_i$ sufficiently far from zero the effect of the double-exponential prior is to shift the location of the posterior mean from $y_i$ toward the origin by $\lambda/2$ units
+
+

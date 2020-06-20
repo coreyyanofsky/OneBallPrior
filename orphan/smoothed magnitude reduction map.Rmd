@@ -1,0 +1,61 @@
+---
+title: "Smoothed magnitude reduction map"
+output:
+  html_document:
+    df_print: paged
+---
+
+### Smoothed magnitude reduction map
+
+First I use monotonic spline interpolation to define a smoothed step function. I shift it slightly so that it rises from the origin. This creates a piecewise-cubic function.
+
+```{r, mollified step, echo = TRUE}
+x <- seq(-0.4, 0.6, by = 0.1)[-6]
+y <- c(rep(0, 5), rep(1, 5))
+smoothed_step <- splinefun(x, y, method = "hyman")
+curve(smoothed_step(x), from = -0.2, to = 0.4, ylab = "", n = 100)
+points(x, y, pch = 16)
+```
+
+Next I integrate the step to get a smoothed ramp (blue), a piecewise quartic function whose coefficients I don't know, and subtract off the true ramp (black) to isolate the smoothing correction (purple).
+
+```{r, isolate the mollifier, echo = TRUE}
+smoothed_ramp <- Vectorize(function(x) {
+  integrate(smoothed_step, lower = -0.2, upper = x, abs.tol = 1e-12)$value
+}, "x")
+curve(smoothed_ramp(x), from = 0, to = 0.2, col = "blue", ylab = "", lwd = 2)
+curve(pmax(x - 0.1, 0), add = TRUE, col = "black" ,lwd = 2)
+curve(smoothed_ramp(x) - pmax(x - 0.1, 0), add = TRUE, col = "purple", lwd = 2)
+legend("topleft", legend = c("smoothed ramp", "correction", "ramp"), col = c("blue", "red", "black"), lwd = 2)
+```
+
+The correction is symmetric around 0.1 and strictly equal to 0 outside of $[0, 0.2]$ so I just need to figure out what it is between 0 and 0.1. To do this I will use the most boneheaded brute force approach at my disposal: polynomial fitting. I know that the function is a quartic in $[0, 0.1]$, so...
+
+```{r, tell me the coefficients, echo = TRUE}
+x <- seq(0, 0.1, by = 0.01)
+y <- smoothed_ramp(x)
+plot(x, y, type = "p", pch = 16)
+curve(smoothed_ramp(x), add = TRUE, col = "red")
+coeffs <- coefficients(lm(y ~ I(x) + I(x^2) + I(x^3) + I(x^4), data = data.frame(x = x, y = y)))
+round(coeffs,2)
+```
+
+And now I know the coefficients explicitly and can easily implement the smoothed ramp in Stan and use it to construct a smoothed version of the magnitude reduction map. 
+
+```{r, smoothed ramp, explicit version, echo = TRUE}
+explicit_smoothed_ramp <- function(x) {
+  nice_curve <- function(x) 25*(x^3) - 62.5*(x^4)
+  ifelse(
+    x < -0.1, 0, 
+  ifelse(
+    x > 0.1, x,
+  ifelse(x < 0, nice_curve(0.1 + x), 
+    x + nice_curve(0.1 - x)
+  )))
+}
+
+curve(smoothed_ramp(x + 0.1), from = -0.1, to = 0.1, col = "blue", ylab = "", lwd = 2)
+curve(explicit_smoothed_ramp(x), add = TRUE, col = "red", lwd = 2, lty = 2)
+curve(pmax(0,x), add = TRUE)
+legend("topleft", legend = c("implicit", "explicit", "ramp"), col = c("blue", "red", "black"), lwd = c(2,2,1), lty = c(1,2,1))
+```
